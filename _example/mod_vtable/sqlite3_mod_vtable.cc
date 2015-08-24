@@ -1,8 +1,10 @@
 #include <string>
 #include <sstream>
-#include <sqlite3-binding.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sqlite3.h>
 #include <sqlite3ext.h>
-#include <curl/curl.h>
+
 #include "picojson.h"
 
 #ifdef _WIN32
@@ -95,31 +97,28 @@ typedef struct {
 
 static int
 my_open(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor) {
+  FILE* fin;
   MEMFILE* mf;
-  CURL* curl;
   char* json;
-  CURLcode res = CURLE_OK;
-  char error[CURL_ERROR_SIZE] = {0};
-  char* cert_file = getenv("SSL_CERT_FILE");
 
   mf = memfopen();
-  curl = curl_easy_init();
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2);
-  curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.29.0");
-  curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/repositories");
-  if (cert_file)
-    curl_easy_setopt(curl, CURLOPT_CAINFO, cert_file);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-  curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, mf);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, memfwrite);
-  res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
-  if (res != CURLE_OK) {
-    std::cerr << error << std::endl;
+
+  // https://api.github.com/repositories
+  fin = fopen("github-repositories.json", "rt");
+  if (fin == NULL) {
+    std::cerr << "open github-repositories.json failed!" << std::endl;
     return SQLITE_FAIL;
   }
+
+  // file size
+  fseek(fin, 0, SEEK_END);
+  mf->size = ftell(fin);
+  fseek(fin, 0, SEEK_SET);
+
+  // copy to mf
+  mf->data = (char*)malloc(mf->size);
+  fread(mf->data, 1, mf->size, fin);
+  fclose(fin);
 
   picojson::value* v = new picojson::value;
   std::string err;

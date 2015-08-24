@@ -10,13 +10,15 @@ RM=rm
 LDFLAG=-fPIC
 endif
 
+SQLITE_DIR=../../internal/sqlite-amalgamation-3081101
+
 all : $(EXE) $(EXT)
 
 $(EXE) : extension.go
 	go build $<
 
-$(EXT) : sqlite3_mod_regexp.c
-	gcc $(LDFLAG) -shared -o $@ $< -lsqlite3 -lpcre
+$(EXT) : sqlite3_mod_regexp.c $(SQLITE_DIR)/sqlite3.c
+	gcc -I$(SQLITE_DIR) $(LDFLAG) -shared -o $@ $<
 
 clean :
 	@-$(RM) $(EXE) $(EXT)

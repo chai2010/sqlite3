@@ -14,7 +14,8 @@ func main() {
 			Extensions: []string{
 				"sqlite3_mod_vtable",
 			},
-		})
+		},
+	)
 
 	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
 	if err != nil {
